@@ -2,9 +2,6 @@ import os
 import numpy as np
 from PIL import Image
 import cv2
-import json
-import base64
-import requests
 
 def get_color_histogram(image_path):
     img = cv2.imread(image_path)
@@ -68,6 +65,73 @@ def tsp_nearest_neighbor_2opt(dist_matrix):
             if improved: break
     return best_path
 
-def llm_sort(image_paths, engine, api_key, nsfw_flag):
-    # Mock LLM API bypass for structural demo
-    return list(range(len(image_paths)))
+def apply_action(current_items, action, select_index=None):
+    # current_items is list of (path, label) tuples
+    if not current_items:
+        return current_items, "No images to modify."
+        
+    paths = [item[0] for item in current_items]
+    
+    if action == "reverse":
+        paths.reverse()
+        msg = "Storyboard order reversed."
+    elif action == "move_left":
+        if select_index is not None and 0 <= select_index < len(paths):
+            if select_index > 0:
+                paths[select_index], paths[select_index-1] = paths[select_index-1], paths[select_index]
+                msg = f"Moved image {select_index+1} left."
+                select_index -= 1
+            else:
+                msg = "Already at the beginning."
+        else:
+            # Move first item left or move last selected
+            msg = "Please select an image in the gallery first, or use drag-and-drop."
+    elif action == "move_right":
+        if select_index is not None and 0 <= select_index < len(paths):
+            if select_index < len(paths) - 1:
+                paths[select_index], paths[select_index+1] = paths[select_index+1], paths[select_index]
+                msg = f"Moved image {select_index+1} right."
+                select_index += 1
+            else:
+                msg = "Already at the end."
+        else:
+            msg = "Please select an image in the gallery first, or use drag-and-drop."
+    else:
+        msg = "Unknown action."
+        
+    new_items = [(p, f"{i+1} — {os.path.basename(p)}") for i, p in enumerate(paths)]
+    return new_items, msg
+
+def apply_final_action(current_items, action_mode, folder_path):
+    if not current_items:
+        return "No images to apply."
+    if not folder_path or not os.path.exists(folder_path):
+        return "Invalid folder path."
+        
+    paths = [item[0] for item in current_items]
+    
+    if "Copy to _storyboard" in action_mode:
+        target_dir = os.path.join(folder_path, "_storyboard")
+        os.makedirs(target_dir, exist_ok=True)
+        count = 0
+        for i, p in enumerate(paths):
+            ext = os.path.splitext(p)[1]
+            dest = os.path.join(target_dir, f"{i+1:03d}_{os.path.basename(p)}")
+            shutil.copy2(p, dest)
+            count += 1
+        return f"Successfully copied {count} sorted images to {target_dir}"
+    else:
+        # Rename originals
+        count = 0
+        for i, p in enumerate(paths):
+            dir_name = os.path.dirname(p)
+            ext = os.path.splitext(p)[1]
+            # avoid collision by temporary naming or direct rename if unique
+            new_name = f"{i+1:03d}_{os.path.basename(p)}"
+            dest = os.path.join(dir_name, new_name)
+            if p != dest:
+                if os.path.exists(dest):
+                    os.remove(dest)
+                os.rename(p, dest)
+            count += 1
+        return f"Successfully renamed {count} files in {folder_path}"
