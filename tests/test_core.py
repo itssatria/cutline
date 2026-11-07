@@ -55,3 +55,33 @@ def test_apply_order(tmp_path):
 def test_parse_order_repairs_bad_replies():
     assert providers.parse_order("Sure! [2, 0, 1]", 3) == [2, 0, 1]
     assert providers.parse_order("[1, 1, 7]", 4) == [1, 0, 2, 3]
+
+
+def test_parse_perm():
+    assert files.parse_perm("2,0,1", 3) == [2, 0, 1]
+    assert files.parse_perm("2,2,1", 3) is None
+    assert files.parse_perm("abc", 3) is None
+
+
+def test_avif_and_grid(tmp_path):
+    from cutline.gridhtml import render_grid
+    im = Image.new("RGB", (64, 40), (200, 60, 20))
+    names = []
+    for ext in (".png", ".avif"):
+        if ext in files.EXTS:
+            im.save(tmp_path / f"a{ext}")
+            names.append(f"a{ext}")
+    found = files.list_images(tmp_path)
+    assert [p.name for p in found] == sorted(names)
+    html = render_grid(found, list(range(len(found)))[::-1])
+    assert 'draggable="true"' in html and html.count("sb-frame") >= len(found)
+
+
+def test_render_dupes(tmp_path):
+    from cutline.gridhtml import render_dupes
+    a, b = tmp_path / "a.png", tmp_path / "b.png"
+    Image.new("RGB", (80, 50), (10, 120, 200)).save(a)
+    shutil.copy(a, b)
+    html = render_dupes([[0, 1]], [str(a), str(b)])
+    assert html.count("dp-card") >= 2 and 'data-def="keep"' in html and 'data-def="del"' in html
+    assert 'data-act="dup-delete"' in html

@@ -56,7 +56,7 @@ def is_downloaded(m: VisionModel) -> bool:
 
 def choices():
     """Dropdown entries: (label shown to the user, model key)."""
-    return [(f"{m.label} · " + ("downloaded" if is_downloaded(m) else f"download ~{m.approx_gb} GB on first use"), m.key)
+    return [(f"{m.label} · " + ("ready" if is_downloaded(m) else f"~{m.approx_gb} GB"), m.key)
             for m in MODELS.values()]
 
 

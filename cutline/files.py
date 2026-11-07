@@ -12,7 +12,25 @@ try:
 except ImportError:  # pragma: no cover
     send2trash = None
 
-EXTS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
+# Optional format plugins: HEIC/HEIF/AVIF (pillow-heif) and JPEG XL (pillow-jxl-plugin).
+try:
+    import pillow_heif
+    pillow_heif.register_heif_opener()
+    try:
+        pillow_heif.register_avif_opener()
+    except Exception:
+        pass
+except Exception:
+    pass
+try:
+    import pillow_jxl  # noqa: F401
+except Exception:
+    pass
+
+WANTED = {".jpg", ".jpeg", ".jfif", ".png", ".webp", ".bmp", ".gif", ".tif", ".tiff",
+          ".avif", ".heic", ".heif", ".jxl"}
+_registered = Image.registered_extensions()
+EXTS = {e for e in WANTED if e in _registered}        # only formats this install can really open
 OUT_DIR_NAME = "_storyboard"
 THUMBS = Path(tempfile.gettempdir()) / "cutline_thumbs"
 
@@ -22,6 +40,45 @@ def list_images(folder, recursive=False):
     it = folder.rglob("*") if recursive else folder.glob("*")
     return sorted(p for p in it
                   if p.is_file() and p.suffix.lower() in EXTS and OUT_DIR_NAME not in p.parts)
+
+
+def unsupported_exts(folder, recursive=False):
+    """Extensions of image files we recognise but cannot open (plugin missing)."""
+    folder = Path(folder)
+    it = folder.rglob("*") if recursive else folder.glob("*")
+    return sorted({p.suffix.lower() for p in it
+                   if p.is_file() and p.suffix.lower() in WANTED - EXTS and OUT_DIR_NAME not in p.parts})
+
+
+def skipped_note(folder, recursive=False):
+    ex = unsupported_exts(folder, recursive)
+    return (f" Skipped unsupported files ({', '.join(ex)}): run `pip install pillow-heif` "
+            "(HEIC/AVIF) or `pillow-jxl-plugin` (JXL).") if ex else ""
+
+
+def parse_perm(text, n):
+    """'3,0,2,1' -> [3, 0, 2, 1] if it is a permutation of range(n), else None."""
+    try:
+        v = [int(x) for x in str(text).split(",") if x.strip() != ""]
+    except ValueError:
+        return None
+    return v if sorted(v) == list(range(n)) else None
+
+
+_URI_CACHE = {}
+
+
+def thumb_data_uri(path, size=256):
+    """Tiny inline JPEG for the drag-and-drop grid (no file serving needed)."""
+    import base64
+    import io
+    path = Path(path)
+    key = (str(path), path.stat().st_mtime_ns, size)
+    if key not in _URI_CACHE:
+        buf = io.BytesIO()
+        load_rgb(path, size).save(buf, "JPEG", quality=72)
+        _URI_CACHE[key] = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+    return _URI_CACHE[key]
 
 
 def load_rgb(path, max_side=None):

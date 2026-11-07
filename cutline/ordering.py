@@ -80,9 +80,10 @@ def local_order(paths, model_key, progress=lambda f, m: None):
     note = ""
     try:
         embed = models.load(model_key, progress)
-    except ImportError:
+    except ImportError as e:
         embed = None
-        note = "PyTorch / open_clip not installed, so only colour was used. See README."
+        note = (f"Python package '{e.name}' is not installed, so only colour was used (weak story flow). "
+                "Run: pip install -r requirements.txt")
     n, B = len(paths), 16
     hists, feats = [], []
     for s in range(0, n, B):
