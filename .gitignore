@@ -19,3 +19,6 @@ gradle-app.setting
 .project
 # JDT-specific (Eclipse Java Development Tools)
 .classpath
+__pycache__/dedupe.cpython-314.pyc
+__pycache__/models.cpython-314.pyc
+__pycache__/sort.cpython-314.pyc
