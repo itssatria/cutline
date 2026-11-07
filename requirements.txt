@@ -1,0 +1,13 @@
+gradio>=4.0.0
+torch
+torchvision
+transformers
+Pillow
+imagehash
+numpy
+opencv-python-headless
+google-generativeai
+openai
+anthropic
+requests
+tqdm
