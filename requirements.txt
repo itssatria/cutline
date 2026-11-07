@@ -1,13 +1,11 @@
-gradio>=4.0.0
-torch
-torchvision
-transformers
-Pillow
-imagehash
+gradio>=5,<6
+pillow
 numpy
-opencv-python-headless
-google-generativeai
-openai
-anthropic
+send2trash
 requests
-tqdm
+huggingface_hub
+open_clip_torch
+# PyTorch: for an NVIDIA GPU install the CUDA build first (see https://pytorch.org), then the rest.
+torch
+# Optional, only for the DINOv2 model:
+# transformers
