@@ -85,3 +85,14 @@ def test_render_dupes(tmp_path):
     html = render_dupes([[0, 1]], [str(a), str(b)])
     assert html.count("dp-card") >= 2 and 'data-def="keep"' in html and 'data-def="del"' in html
     assert 'data-act="dup-delete"' in html
+
+
+def test_preview_and_compare_panels(tmp_path):
+    from cutline.gridhtml import compare_panel, preview_panel
+    a, b = tmp_path / "a.png", tmp_path / "b.jpg"
+    Image.new("RGB", (120, 80), (10, 120, 200)).save(a)
+    Image.new("RGB", (60, 40), (10, 120, 200)).save(b)
+    p = preview_panel("story", 3, str(a), 2, 9)
+    assert 'data-key="story:3:2:9"' in p and "data:image/jpeg;base64," in p
+    c = compare_panel(1, [str(a), str(b)], [0, 1], 0, 1)
+    assert 'data-key="cmp:1:0:1"' in c and 'class="cmp-stage"' in c and 'data-act="cmp-b"' in c

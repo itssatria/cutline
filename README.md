@@ -32,13 +32,14 @@ python app.py
 **1 · Duplicates**
 1. Paste the folder path or click **Browse…**, set the similarity tolerance, click **Scan**.
 2. Each group shows thumbnails. The highest-resolution copy is marked KEEP, the others DELETE. Click a card to switch it between Keep and Delete.
-3. The bar at the bottom of the panel shows how many files are marked and has the **Move N to Recycle Bin** button (and **Reset marks**).
+3. Press **Space** for a full-size preview, or **C** (or the **Compare** button) for an A/B slider in the side panel.
+4. The bar at the bottom of the panel shows how many files are marked and has the **Move N to Recycle Bin** button (and **Reset marks**).
    Cutline never deletes permanently and refuses to remove every copy in a group.
 
 **2 · Storyboard**
 1. Paste the folder path and pick a vision model. It downloads automatically the first time you use it, with a progress bar, then is cached in `~/.cutline/models` (change with the `CUTLINE_MODELS` environment variable).
 2. Pick a sorting engine and click **Sort as storyboard**.
-3. **Drag any frame onto another to rearrange the story.** The gallery auto-scrolls while you drag near its edges. **Undo** steps back, and **Reverse** flips the whole sequence (the local sort cannot know which end is the start).
+3. **Drag any frame onto another to rearrange the story.** Select several first (Ctrl/Shift+click) to move them together, and press **Space** to preview the full image in a side panel. The gallery auto-scrolls while you drag near its edges. **Undo** steps back, and **Reverse** flips the whole sequence (the local sort cannot know which end is the start).
 4. **Apply order** either copies the images into `_storyboard/` as `001_`, `002_`, ... or renames the originals, then shows a confirmation popup.
 
 The header and sidebar stay fixed; only the gallery scrolls. Cutline always starts in dark mode, and the icon at the top right switches to light.
@@ -103,6 +104,11 @@ run.bat             Windows launcher
 Run the tests with `pip install pytest` then `python -m pytest`.
 
 ## Changelog
+
+### 0.3.0
+* **Multi-select in the storyboard:** click to select, **Ctrl/Cmd+click** to add or remove, **Shift+click** for a range, **Ctrl+A** for all, **Esc** to clear. Drag any selected frame and the whole selection moves together.
+* **Preview panel:** press **Space** over an image (or on the last one you clicked) to slide in the full image on the right. **← →** browse through the images, **Space** or **Esc** closes it.
+* **Compare (Duplicates tab):** press **C** over a card, or use the **Compare** button on a group, to open a before/after slider on the right: image A on the left, image B on the right. Pick any two files in the group with the A / B buttons.
 
 ### 0.2.6
 * Duplicates: groups are now clickable cards (Keep / Delete) in the same panel style as the storyboard, with a thumbnail size slider and a **Move N to Recycle Bin** button that is always visible at the bottom, plus **Reset marks**.

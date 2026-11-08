@@ -8,7 +8,8 @@ from pathlib import Path
 import gradio as gr
 
 from cutline import dedupe, files, models, ordering, providers
-from cutline.gridhtml import EMPTY, EMPTY_DUP, render_dupes, render_grid
+from cutline.gridhtml import (EMPTY, EMPTY_DUP, PV_EMPTY, compare_panel, preview_panel, render_dupes,
+                              render_grid)
 
 ROOT = Path(__file__).parent
 ASSETS = ROOT / "assets"
@@ -211,6 +212,37 @@ def apply(folder, paths, order, mode):
     return (*_modal("Storyboard order applied", msg), gr.skip(), gr.skip(), gr.skip(), gr.skip())
 
 
+# ----------------------------------------------------------- preview / compare panel
+def on_preview(text, st_paths, d_files):
+    """Space key: the page posts "story:<idx>:<pos>:<total>" or "dup:..." plus a timestamp."""
+    try:
+        kind, idx, pos, total = (text or "").rsplit("|", 1)[0].split(":")
+        idx, pos, total = int(idx), int(pos), int(total)
+        path = (st_paths if kind == "story" else d_files)[idx]
+    except Exception:
+        return gr.skip()
+    try:
+        return preview_panel(kind, idx, path, pos, total)
+    except Exception as e:
+        raise gr.Error(f"Could not open the image: {e}")
+
+
+def on_compare(text, d_files, d_groups):
+    """Compare button / C key: JSON {"g": group, "a": file index, "b": file index}."""
+    try:
+        d = json.loads((text or "").rsplit("|", 1)[0])
+        g, a, b = int(d["g"]), int(d["a"]), int(d["b"])
+        group = d_groups[g]
+        if a == b or a not in group or b not in group:
+            return gr.skip()
+    except Exception:
+        return gr.skip()
+    try:
+        return compare_panel(g, d_files, group, a, b)
+    except Exception as e:
+        raise gr.Error(f"Could not open the images: {e}")
+
+
 # ----------------------------------------------------------- UI
 def _folder_field():
     """Folder box with the Browse button inside the same bordered field (see .folder-field in style.css)."""
@@ -275,7 +307,15 @@ def build():
             modal_ok = gr.Button("OK", variant="primary")
         modal_ok.click(lambda: gr.Group(visible=False), None, modal)
 
+        # ---------------- right-hand panel (preview on Space, compare on the Duplicates tab)
+        pv_html = gr.HTML(PV_EMPTY, elem_id="pv-panel")
+        pv_bridge = gr.Textbox(elem_id="preview-bridge", elem_classes="bridge", label="preview bridge")
+        cmp_bridge = gr.Textbox(elem_id="compare-bridge", elem_classes="bridge", label="compare bridge")
+
         # ---------------- wiring
+        pv_bridge.input(on_preview, [pv_bridge, st_paths, d_files], pv_html)
+        cmp_bridge.input(on_compare, [cmp_bridge, d_files, d_groups], pv_html)
+
         tab_dup.click(lambda: _page("dup"), None, [page_dup, page_story], js=NAV_JS % ("dup", "story"))
         tab_story.click(lambda: _page("story"), None, [page_dup, page_story], js=NAV_JS % ("story", "dup"))
 

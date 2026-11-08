@@ -66,6 +66,22 @@ def parse_perm(text, n):
 
 
 _URI_CACHE = {}
+_PREVIEW_CACHE = {}
+
+
+def preview_data_uri(path, size=1600):
+    """Large JPEG for the side preview / compare panel (small LRU cache)."""
+    import base64
+    import io
+    path = Path(path)
+    key = (str(path), path.stat().st_mtime_ns, size)
+    if key not in _PREVIEW_CACHE:
+        if len(_PREVIEW_CACHE) >= 16:
+            _PREVIEW_CACHE.pop(next(iter(_PREVIEW_CACHE)))
+        buf = io.BytesIO()
+        load_rgb(path, size).save(buf, "JPEG", quality=84)
+        _PREVIEW_CACHE[key] = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+    return _PREVIEW_CACHE[key]
 
 
 def thumb_data_uri(path, size=256):
