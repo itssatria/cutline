@@ -37,34 +37,57 @@ python app.py
    Cutline never deletes permanently and refuses to remove every copy in a group.
 
 **2 · Storyboard**
-1. Paste the folder path and pick a vision model. It downloads automatically the first time you use it, with a progress bar, then is cached in `~/.cutline/models` (change with the `CUTLINE_MODELS` environment variable).
-2. Pick a sorting engine and click **Sort as storyboard**.
-3. **Drag any frame onto another to rearrange the story.** Select several first (Ctrl/Shift+click) to move them together, and press **Space** to preview the full image in a side panel. The gallery auto-scrolls while you drag near its edges. **Undo** steps back, and **Reverse** flips the whole sequence (the local sort cannot know which end is the start).
-4. **Apply order** either copies the images into `_storyboard/` as `001_`, `002_`, ... or renames the originals, then shows a confirmation popup.
+1. Paste the folder path or click **Browse…**. **All images load immediately** in name order. You do not have to sort first.
+2. Arrange them yourself by dragging (select several with Ctrl/Shift+click to move them together), or press **Sort**.
+3. **Pin frames** with the lock icon on a frame (or **Pin ends**, **Lock selected**, **Unlock all**). Sorting then works *around* the pinned frames. Pin your first and last frame and Cutline finds the smoothest path between them, so the story starts and ends where you want. Pinned frames keep their current positions.
+4. With an AI engine (Ollama, Gemini, ...) a **Story prompt** box appears. Describe the story you want and the AI uses it to decide the order.
+5. **Apply order** either copies the images into `_storyboard/` as `001_`, `002_`, ... or renames the originals, then shows a confirmation popup. **Undo** steps back and **Reverse** flips the sequence.
+6. The vision model downloads automatically the first time (with a progress bar) and is cached in `~/.cutline/models` (change with `CUTLINE_MODELS`).
 
-The header and sidebar stay fixed; only the gallery scrolls. Cutline always starts in dark mode, and the icon at the top right switches to light.
+**3 · Animatic**
+Every image of the storyboard, in order, with a text box beside it. **Generate story** asks the AI engine you chose on the Storyboard tab (it needs an AI engine, not Local only) to write one or two sentences per shot, guided by your story prompt. **Fill empty** only writes the boxes you left empty, **Regenerate** redoes a single shot, and everything is editable. Set the seconds per frame to see the total runtime, then **Export story** writes `animatic.md` and `animatic.csv` into the `_storyboard` folder.
+
+**Layout and shortcuts**
+The window itself never scrolls: the header, tabs and footer stay put, the gallery has a single vertical scrollbar, and the left sidebar only scrolls inside itself if your window is too short for it. The **Hide sidebar** button at the top of the sidebar gives the gallery the full width (a **Show sidebar** button then appears in the gallery toolbar). Thumbnails keep each image's own shape, so portrait photos stay portrait. Cutline starts in dark mode; the sun / moon icon at the top right switches themes, and the two icons in the footer check for updates and open About.
+
+| Key | Action |
+|---|---|
+| **Space** or double-click | Full-size preview in the right-hand panel (hover an image first) |
+| **← →** | Previous / next image while the preview is open |
+| **C** | Compare the hovered duplicate with the group's KEEP copy (A/B slider) |
+| **L** | Lock / unlock the selected storyboard frames |
+| **Ctrl+A**, **Esc** | Select all frames, clear the selection (or close the panel) |
 
 ## Supported image types
 
 JPG/JPEG, JFIF, PNG, WebP, BMP, GIF, TIFF, **AVIF, HEIC/HEIF** (via `pillow-heif`, included in `requirements.txt`) and JPEG XL (optional: `pip install pillow-jxl-plugin`). If a folder contains a type your install cannot open, Cutline tells you which one was skipped and how to add it.
+
+## Updates and About
+
+* The footer shows the version and **build number** (the git commit count when you installed with `git clone`, otherwise the number stored in `cutline/__init__.py`), plus the commit id.
+* **Check for updates**: for a git install it runs `git fetch` (no GitHub API, so no rate limit); for a zip install it reads `cutline/__init__.py` from GitHub. If a newer version exists, an **Update now** button runs `git pull --ff-only`; then close Cutline and run `run.bat` again (it installs any new packages). Zip installs get links to the latest download instead. A small "Update available" badge appears in the footer after startup (the answer is cached for 6 hours). Set `CUTLINE_NO_UPDATE_CHECK=1` to turn the startup check off. Only GitHub is contacted, and only for this.
+* **About** shows the app, the author and a Buy Me a Coffee link.
+* Set your repository, name, profile link and Buy Me a Coffee page in **`cutline/config.py`**. The coffee button stays hidden until you add the link.
 
 ## Sorting engines
 
 | Engine | Needs | Leaves your PC? |
 |---|---|---|
 | **Local only (CLIP, offline)** | nothing | No |
-| **Ollama (local vision model)** | [Ollama](https://ollama.com) running, plus a vision model, e.g. `ollama pull qwen2.5vl:7b` | No |
+| **Ollama (local vision model)** | [Ollama](https://ollama.com) running, plus a vision model, e.g. `ollama pull qwen2.5vl:7b`. When you pick this engine, Cutline lists the models installed in your Ollama (vision models first); use **Refresh Ollama models** after pulling a new one. A custom address is read from `OLLAMA_HOST`. | No |
 | **Gemini** | API key from Google AI Studio (has a free tier) | Yes |
 | **OpenAI** | API key (billed separately from ChatGPT subscriptions) | Yes |
 | **Claude** | Anthropic API key | Yes |
 | **OpenRouter** | one key, many models | Yes |
 
 * Local mode orders images by visual similarity (smooth flow). The AI engines look at the pictures and also fix story logic, such as establishing shots before close-ups.
-* Cloud engines receive 512 px copies of your images, up to 100 per run (Ollama: 24).
+* There is no limit on the number of images. Small folders are sent to the model in one request (512 px copies). Bigger folders (more than 12 for Ollama, 100 for cloud engines) use two steps: the model describes the images a few at a time, then orders the descriptions as text. It is slower, and the second step sees descriptions rather than pictures. Ollama requests use an 8192-token context; set `CUTLINE_OLLAMA_CTX` to change it.
 * Keys are used for the request only; they are never saved or logged. You can prefill them with the environment variables `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` and `OPENROUTER_API_KEY`.
 * Model names change often, so each engine has an editable **Model name** field. If a default is outdated, type a current one. Check each provider's terms and data policy, especially for free tiers.
 
 ### NSFW mode
+
+Tick **My photos contain NSFW content** to disable every cloud engine (see below). A **Blur thumbnails** checkbox then appears: it blurs all thumbnails in the storyboard, duplicate and animatic views, and a thumbnail un-blurs while you hover over it. The full-size preview panel is not blurred.
 
 Tick **My photos contain NSFW content** to disable every cloud engine. Only *Local* and *Ollama* remain, so nothing leaves your PC. Duplicate detection and CLIP sorting always run locally and work on any content; CLIP-style models do not filter images.
 
@@ -87,23 +110,53 @@ Sizes are estimates.
 ## Project layout
 
 ```
-app.py              Gradio interface
+app.py              Gradio interface (3 tabs: Duplicates, Storyboard, Animatic)
 assets/             logo, logo mark, favicon
 cutline/
-  gridhtml.py       drag-and-drop storyboard grid (HTML)
-  static/           style.css (fixed layout) and dnd.js (drag and drop)
+  gridhtml.py       HTML for the storyboard, duplicates, animatic and preview panels
+  static/           style.css (layout) and dnd.js (drag and drop, locks, preview panel, shortcuts)
   dedupe.py         duplicate detection
   ordering.py       storyboard ordering
   models.py         vision models: first-use download with progress
-  providers.py      optional AI engines (Gemini, OpenAI, Claude, OpenRouter, Ollama)
+  providers.py      optional AI engines (Gemini, OpenAI, Claude, OpenRouter, Ollama): ordering + story text
+  updater.py        build number, update check, git pull
   files.py          listing, thumbnails, Recycle Bin, applying the order
 tests/test_core.py  core tests (no GPU or network needed)
+tests/ui_smoke.py   optional browser test of the page script (pip install playwright, then: playwright install chromium)
 run.bat             Windows launcher
 ```
 
 Run the tests with `pip install pytest` then `python -m pytest`.
 
 ## Changelog
+
+### 0.6.0
+* **Favicon** is now the Cutline logo (set by the page itself, replacing Gradio's default icon).
+* **Hide sidebar** button moved to the top of the sidebar; the toolbar shows **Show sidebar** only while it is hidden.
+* **Thumbnails keep their original shape** (no more cropping to one shape) in the storyboard, duplicate cards and animatic.
+* **Theme, check-for-updates and About are real icons** (inline SVG) instead of text / grey boxes, so nothing clips.
+* **One vertical scrollbar:** the window no longer scrolls on desktop; only the gallery scrolls (the sidebar scrolls inside itself only if it has to).
+* Choosing an AI engine hides the built-in vision-model dropdown. Cutline still runs its small default model once (downloaded on first use) to give the AI a good starting order.
+* **NSFW mode** now has a **Blur thumbnails** checkbox (hover to reveal).
+
+### 0.5.1
+* Removed the 24-image limit for Ollama (and the 100-image limit for cloud engines). Folders larger than one request can hold are now sorted in two steps: the model describes the images a few at a time, then orders the descriptions as text. Ollama calls also ask for a larger context window.
+
+### 0.5.0
+* **Fixed:** Space, double-click and Compare did nothing. The side panel is now built by the page script itself instead of a Gradio component, Space works even when a button still has focus, and double-click opens the preview. A browser test of the page script now covers this.
+* **Sidebar no longer hides the Sort button:** the left sidebar scrolls with the page (not sticky) and can be hidden; the gallery panel stays pinned and has its own **Sort** / **Scan** buttons in its toolbar.
+* **Auto-load:** picking a folder shows all images straight away on the Storyboard tab.
+* **Pinned frames:** lock any frame (or pin the first and last) and sorting works around them.
+* **Story prompt** for AI sorting, and a new **Animatic** tab with AI-written story text beside every image, runtime, and export to Markdown / CSV.
+* **Update check no longer hits the GitHub API** (that caused "rate limit reached"): git installs use `git fetch`, zip installs read one raw file, and the startup answer is cached.
+* About popup logo is centered.
+
+### 0.4.0
+* Footer with the version and build number, **Check for updates** (GitHub) and **Update now** (`git pull`) for git installs, and a startup "Update available" badge.
+* **About** popup: app info, author profile, source / issues links and an optional Buy Me a Coffee button. Settings live in `cutline/config.py`.
+
+### 0.3.1
+* Picking the **Ollama** engine now loads the models installed in your local Ollama into the model list (vision-capable ones first, text-only ones marked), with a **Refresh Ollama models** button. Clear messages if Ollama is not running or a model is missing. Honours `OLLAMA_HOST`.
 
 ### 0.3.0
 * **Multi-select in the storyboard:** click to select, **Ctrl/Cmd+click** to add or remove, **Shift+click** for a range, **Ctrl+A** for all, **Esc** to clear. Drag any selected frame and the whole selection moves together.

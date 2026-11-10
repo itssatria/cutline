@@ -73,8 +73,87 @@ def storyboard_order(D):
     return two_opt(best, D, max_passes=50 if n <= 300 else 4)
 
 
-def local_order(paths, model_key, progress=lambda f, m: None):
-    """Returns (order, note). Falls back to colour-only if PyTorch/open_clip are missing."""
+def _edge(D, o, i):
+    return D[o[i], o[i + 1]] if 0 <= i < len(o) - 1 else 0.0
+
+
+def _improve_locked(order, D, free_slots, max_passes):
+    """Swap / reverse free frames while pinned frames stay put."""
+    runs, run = [], []
+    for s in free_slots:
+        if run and s != run[-1] + 1:
+            runs.append(run)
+            run = []
+        run.append(s)
+    if run:
+        runs.append(run)
+    for _ in range(max_passes):
+        improved = False
+        for a in range(len(free_slots) - 1):
+            i = free_slots[a]
+            for b in range(a + 1, len(free_slots)):
+                j = free_slots[b]
+                edges = {i - 1, i, j - 1, j}
+                old = sum(_edge(D, order, k) for k in edges)
+                order[i], order[j] = order[j], order[i]
+                if sum(_edge(D, order, k) for k in edges) < old - 1e-9:
+                    improved = True
+                else:
+                    order[i], order[j] = order[j], order[i]
+        for run in runs:
+            for x in range(len(run) - 1):
+                for y in range(x + 1, len(run)):
+                    i, j = run[x], run[y]
+                    old = _edge(D, order, i - 1) + _edge(D, order, j)
+                    order[i:j + 1] = order[i:j + 1][::-1]
+                    if _edge(D, order, i - 1) + _edge(D, order, j) < old - 1e-9:
+                        improved = True
+                    else:
+                        order[i:j + 1] = order[i:j + 1][::-1]
+        if not improved:
+            break
+    return order
+
+
+def constrained_order(D, locked):
+    """Smoothest order in which the pinned frames keep their positions.
+    locked: {position: image_index}. Pinning the first and last frame fixes the story's start and end."""
+    n = len(D)
+    locked = {int(s): int(i) for s, i in locked.items() if 0 <= int(s) < n}
+    if not locked:
+        return storyboard_order(D)
+    pinned = set(locked.values())
+    free_imgs = [i for i in range(n) if i not in pinned]
+    free_slots = [s for s in range(n) if s not in locked]
+    if not free_slots:
+        return [locked[s] for s in range(n)]
+    base = [free_imgs[k] for k in storyboard_order(D[np.ix_(free_imgs, free_imgs)])]
+
+    def build(seq):
+        out = [None] * n
+        for s, img in locked.items():
+            out[s] = img
+        for s, img in zip(free_slots, seq):
+            out[s] = img
+        return out
+
+    order = min((build(base), build(base[::-1])), key=lambda o: path_length(o, D))
+    passes = 30 if n <= 150 else (8 if n <= 300 else 3)
+    return _improve_locked(order, D, free_slots, passes)
+
+
+def enforce_locks(order, locked):
+    """Put pinned images back at their positions, keeping the rest in the given order."""
+    if not locked:
+        return list(order)
+    pinned = set(locked.values())
+    rest = iter(i for i in order if i not in pinned)
+    return [locked[s] if s in locked else next(rest) for s in range(len(order))]
+
+
+def local_order(paths, model_key, progress=lambda f, m: None, locked=None):
+    """Returns (order, note). Falls back to colour-only if PyTorch/open_clip are missing.
+    locked: {position: image_index} frames that must keep their position."""
     from . import models
 
     note = ""
@@ -94,4 +173,4 @@ def local_order(paths, model_key, progress=lambda f, m: None):
             feats.append(embed(batch))
     D = build_distance(np.concatenate(feats) if embed else None, hists)
     progress(0.9, "Finding the smoothest sequence...")
-    return storyboard_order(D), note
+    return (constrained_order(D, locked) if locked else storyboard_order(D)), note

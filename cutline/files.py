@@ -84,7 +84,7 @@ def preview_data_uri(path, size=1600):
     return _PREVIEW_CACHE[key]
 
 
-def thumb_data_uri(path, size=256):
+def thumb_data_uri(path, size=384):
     """Tiny inline JPEG for the drag-and-drop grid (no file serving needed)."""
     import base64
     import io
@@ -158,3 +158,26 @@ def apply_order(ordered_paths, folder, rename_in_place=False):
     for k, p in enumerate(ordered_paths, 1):
         shutil.copy2(p, out / f"{k:0{width}d}_{_PREFIX.sub('', p.name)}")
     return f"Copied {len(ordered_paths)} files to {out}"
+
+
+def _mmss(seconds):
+    s = int(round(seconds))
+    return f"{s // 60}:{s % 60:02d}"
+
+
+def export_animatic(folder, rows, secs):
+    """rows: [(image_path, story_text)] in storyboard order. Writes animatic.md and animatic.csv into _storyboard/."""
+    import csv
+    out = Path(folder) / OUT_DIR_NAME
+    out.mkdir(exist_ok=True)
+    md, cs = out / "animatic.md", out / "animatic.csv"
+    lines = ["# Animatic", "", f"{len(rows)} frames · {secs:g} s per frame · total {_mmss(len(rows) * secs)}", ""]
+    with open(cs, "w", newline="", encoding="utf-8-sig") as fh:
+        w = csv.writer(fh)
+        w.writerow(["frame", "file", "start", "seconds", "story"])
+        for k, (path, text) in enumerate(rows):
+            name, start = Path(path).name, _mmss(k * secs)
+            w.writerow([k + 1, name, start, secs, text])
+            lines += [f"## {k + 1:03d} · {name} · {start}", "", text.strip() or "_(no text)_", ""]
+    md.write_text("\n".join(lines), encoding="utf-8")
+    return str(md), str(cs)

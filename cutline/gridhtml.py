@@ -1,21 +1,67 @@
-"""HTML for the storyboard panel: toolbar, drag-and-drop grid and the bottom control bar.
+"""HTML for the storyboard, duplicates and animatic panels, and for the right-hand preview / compare panel.
 Behaviour lives in static/dnd.js; buttons post to hidden Gradio textboxes (the "bridges")."""
 import html
 from pathlib import Path
 
 from . import files
 
-TOOLBAR = (
-    '<div class="sb-toolbar"><div><span class="sb-title">Storyboard</span>'
-    '<span class="sb-hint">Drag to reorder · Ctrl/Shift+click to multi-select · Space to preview</span></div>'
-    '<label class="sb-size">Thumbnail size'
-    '<input type="range" class="thumb-slider" min="90" max="320" step="10" value="160" aria-label="Thumbnail size"></label></div>'
-)
+def _svg(inner, cls=""):
+    return (f'<svg class="{cls}" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" '
+            f'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{inner}</svg>')
+
+
+ICON_SUN = _svg('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2'
+                'M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>', "ico-sun")
+ICON_MOON = _svg('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>', "ico-moon")
+ICON_REFRESH = _svg('<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/>')
+ICON_INFO = _svg('<circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/>')
+
+
+def header_html(logo_uri):
+    return (f'<div class="hdr"><div class="brand" style="display:flex;align-items:center;gap:12px">'
+            f'<img src="{logo_uri}" alt="Cutline" style="width:42px;height:42px;border-radius:10px">'
+            '<div><div style="font-size:1.4rem;font-weight:700;line-height:1.1"><span style="color:#D9541E">Cut</span>line</div>'
+            '<div style="font-size:.75rem;opacity:.7">Clean cuts. Clear story.</div></div></div><span class="sb-spacer"></span>'
+            '<button type="button" class="icon-btn" data-act="theme" title="Switch light / dark theme" '
+            f'aria-label="Switch light / dark theme">{ICON_SUN}{ICON_MOON}</button></div>')
+
+
+def footer_bar(label, badge=""):
+    return (f'<div class="ft-wrap"><div class="ft-info"><span>{label}</span>{badge}</div><span class="sb-spacer"></span>'
+            '<button type="button" class="icon-btn small" data-act="ft-check" title="Check for updates" '
+            f'aria-label="Check for updates">{ICON_REFRESH}</button>'
+            '<button type="button" class="icon-btn small" data-act="ft-about" title="About Cutline" '
+            f'aria-label="About Cutline">{ICON_INFO}</button></div>')
+
+
+# Hide-sidebar button lives at the top of the sidebar; the toolbar shows "Show sidebar" only while it is hidden.
+SIDE_HIDE = ('<button type="button" class="sb-btn small side-hide" data-act="toggle-side" '
+             'title="Hide this sidebar to give the gallery the full width">&#9664; Hide sidebar</button>')
+_SIDE_BTN = ('<button type="button" class="sb-btn small show-side" data-act="toggle-side">&#9654; Show sidebar</button>')
+_SLIDER = ('<label class="sb-size">Thumbnail size<input type="range" class="thumb-slider" min="90" max="320" step="10" '
+           'value="160" aria-label="Thumbnail size"></label>')
+
+
+def _toolbar(title, hint, buttons=""):
+    return (f'<div class="sb-toolbar"><div class="sb-heading"><span class="sb-title">{title}</span>'
+            f'<span class="sb-hint">{hint}</span></div><div class="sb-tools">{buttons}{_SIDE_BTN}{_SLIDER}</div></div>')
+
+
+def _panel(toolbar, scroll_id, inner, bottom):
+    return (f'<div class="sb-panel-inner">{toolbar}<div id="{scroll_id}" data-scroll>{inner}</div>{bottom}</div>')
+
+
+# ---------------------------------------------------------------- storyboard
+TOOLBAR = _toolbar("Storyboard", "Drag to reorder · Ctrl/Shift+click selects · Space previews · lock icon pins a frame",
+                   '<button type="button" class="sb-btn small primary" data-act="sort">Sort</button>')
 
 BOTTOM = (
     '<div class="sb-bottom" id="sb-bottom">'
     '<button type="button" class="sb-btn" data-act="reverse">Reverse order</button>'
     '<button type="button" class="sb-btn" data-act="undo">Undo</button>'
+    '<button type="button" class="sb-btn" data-act="pin-ends" title="Pin the first and last frame so sorting works around them">Pin ends</button>'
+    '<button type="button" class="sb-btn" data-act="lock-sel" title="Pin / unpin the selected frames (L)">Lock selected</button>'
+    '<button type="button" class="sb-btn" data-act="unlock-all">Unlock all</button>'
     '<span class="sb-spacer"></span>'
     '<div class="sb-seg" role="group" aria-label="Apply as">'
     '<button type="button" class="sb-btn sb-mode active" data-mode="copy" '
@@ -25,48 +71,46 @@ BOTTOM = (
     '<button type="button" class="sb-btn primary" data-act="apply">Apply order</button></div>'
 )
 
+_LOCK = ('<button type="button" class="sb-lock" data-act="lock" title="Pin this frame: sorting keeps it in place" '
+         'aria-label="Pin frame">'
+         '<svg class="ico-open" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" '
+         'stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/></svg>'
+         '<svg class="ico-closed" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" '
+         'stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2" fill="currentColor"/>'
+         '<path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></button>')
 
-def _panel(scroll_inner):
-    return f'<div class="sb-panel-inner">{TOOLBAR}<div id="sb-scroll">{scroll_inner}</div>{BOTTOM}</div>'
+EMPTY = _panel(TOOLBAR, "sb-scroll", '<div class="sb-empty">Pick a folder to see your images here.<br>'
+               'Drag them into order, or press Sort.</div>', BOTTOM)
 
 
-EMPTY = _panel('<div class="sb-empty">Sort a folder to see your storyboard here.<br>'
-               'Then drag frames to rearrange them.</div>')
-
-
-def render_grid(paths, order):
+def render_grid(paths, order, locked=(), progress=None):
     if not order:
         return EMPTY
+    locked = set(locked or ())
     frames = []
     for k, i in enumerate(order):
+        if progress:
+            progress(k / len(order), f"Loading thumbnails ({k + 1}/{len(order)})")
         name = html.escape(Path(paths[i]).name)
+        cls = "sb-frame locked" if i in locked else "sb-frame"
         frames.append(
-            f'<div class="sb-frame" draggable="true" data-idx="{i}" title="{name}">'
-            f'<span class="sb-num">{k + 1:03d}</span>'
+            f'<div class="{cls}" draggable="true" data-idx="{i}" title="{name}">'
+            f'<span class="sb-num">{k + 1:03d}</span>{_LOCK}'
             f'<img draggable="false" src="{files.thumb_data_uri(paths[i])}" alt="{name}">'
             f'<div class="sb-name">{name}</div></div>')
-    return _panel(f'<div id="sb-grid" class="sb-grid">{"".join(frames)}</div>')
+    return _panel(TOOLBAR, "sb-scroll", f'<div id="sb-grid" class="sb-grid">{"".join(frames)}</div>', BOTTOM)
 
 
-# ---------------- duplicates panel ----------------
-DUP_TOOLBAR = (
-    '<div class="sb-toolbar"><div><span class="sb-title">Duplicate groups</span>'
-    '<span class="sb-hint">Click a card to switch Keep / Delete · Space to preview · C to compare</span></div>'
-    '<label class="sb-size">Thumbnail size'
-    '<input type="range" class="thumb-slider" min="90" max="320" step="10" value="160" aria-label="Thumbnail size"></label></div>'
-)
+# ---------------------------------------------------------------- duplicates
+DUP_TOOLBAR = _toolbar("Duplicate groups", "Click a card to switch Keep / Delete · Space previews · C compares",
+                       '<button type="button" class="sb-btn small primary" data-act="scan">Scan</button>')
 DUP_BOTTOM = (
     '<div class="sb-bottom" id="dp-bottom"><span id="dp-count">Nothing marked</span><span class="sb-spacer"></span>'
     '<button type="button" class="sb-btn" data-act="dup-reset">Reset marks</button>'
     '<button type="button" class="sb-btn danger" data-act="dup-delete" disabled>Move to Recycle Bin</button></div>'
 )
-
-
-def _dup_panel(inner):
-    return f'<div class="sb-panel-inner">{DUP_TOOLBAR}<div id="dup-scroll">{inner}</div>{DUP_BOTTOM}</div>'
-
-
-EMPTY_DUP = _dup_panel('<div class="sb-empty">Scan a folder to see duplicate groups here.</div>')
+EMPTY_DUP = _panel(DUP_TOOLBAR, "dup-scroll", '<div class="sb-empty">Scan a folder to see duplicate groups here.</div>',
+                   DUP_BOTTOM)
 
 
 def render_dupes(groups, files_list):
@@ -88,14 +132,48 @@ def render_dupes(groups, files_list):
                    f'<button type="button" class="sb-btn small" data-act="compare">Compare</button></div>'
                    f'<div class="dp-row">{"".join(cards)}</div></div>')
     if not out:
-        return _dup_panel('<div class="sb-empty">No duplicates found.</div>')
-    return _dup_panel("".join(out))
+        return _panel(DUP_TOOLBAR, "dup-scroll", '<div class="sb-empty">No duplicates found.</div>', DUP_BOTTOM)
+    return _panel(DUP_TOOLBAR, "dup-scroll", "".join(out), DUP_BOTTOM)
 
 
-# ---------------- right-hand preview / compare panel ----------------
+# ---------------------------------------------------------------- animatic
+def _am_toolbar(note, secs):
+    btns = ('<button type="button" class="sb-btn small primary" data-act="am-gen">Generate story</button>'
+            '<button type="button" class="sb-btn small" data-act="am-fill">Fill empty</button>'
+            f'<label class="sb-size">Seconds per frame<input type="number" class="am-secs" min="0.5" max="60" '
+            f'step="0.5" value="{secs:g}"></label>')
+    return (f'<div class="sb-toolbar"><div class="sb-heading"><span class="sb-title">Animatic</span>'
+            f'<span class="sb-hint">{note}</span></div><div class="sb-tools">{btns}{_SLIDER}</div></div>')
+
+
+AM_BOTTOM = ('<div class="sb-bottom" id="am-bottom"><span id="am-info">0 frames</span><span class="sb-spacer"></span>'
+             '<button type="button" class="sb-btn primary" data-act="am-export">Export story</button></div>')
+
+
+def render_animatic(paths, order, texts, secs=3.0, engine=""):
+    note = ("Order comes from the Storyboard tab · uses the engine and story prompt set there"
+            + (f" ({html.escape(engine)})" if engine else ""))
+    toolbar = _am_toolbar(note, secs)
+    if not order:
+        return _panel(toolbar, "am-scroll", '<div class="sb-empty">Load a folder on the Storyboard tab first.<br>'
+                      'Each image appears here with a box for its story.</div>', AM_BOTTOM)
+    texts = texts or {}
+    rows = []
+    for k, i in enumerate(order):
+        name = html.escape(Path(paths[i]).name)
+        rows.append(
+            f'<div class="am-row" data-idx="{i}" title="{name}"><div class="am-pic"><span class="sb-num">{k + 1:03d}</span>'
+            f'<img class="am-img" draggable="false" src="{files.thumb_data_uri(paths[i])}" alt="{name}"></div>'
+            f'<div class="am-body"><div class="am-name">{name}</div>'
+            f'<textarea class="am-ta" data-idx="{i}" rows="3" placeholder="Story for this shot...">'
+            f'{html.escape(texts.get(i, ""))}</textarea>'
+            f'<div class="am-actions"><button type="button" class="sb-btn small" data-act="am-regen" data-idx="{i}">'
+            f'Regenerate</button></div></div></div>')
+    return _panel(toolbar, "am-scroll", "".join(rows), AM_BOTTOM)
+
+
+# ---------------------------------------------------------------- right-hand preview / compare panel
 _CLOSE = '<button type="button" class="pv-close" data-act="pv-close" aria-label="Close panel">&#10005;</button>'
-PV_EMPTY = ('<div class="pv-inner" data-key=""><div class="pv-head"><b class="pv-title">Preview</b>' + _CLOSE +
-            '</div><div class="pv-empty">Hover an image and press Space.<br>On the Duplicates tab, press C to compare.</div></div>')
 
 
 def preview_panel(kind, idx, path, pos, total):
