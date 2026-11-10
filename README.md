@@ -160,8 +160,6 @@ Run the tests with `pip install pytest` then `python -m pytest`.
 
 ### 0.3.0
 * **Multi-select in the storyboard:** click to select, **Ctrl/Cmd+click** to add or remove, **Shift+click** for a range, **Ctrl+A** for all, **Esc** to clear. Drag any selected frame and the whole selection moves together.
-* **Preview panel:** press **Space** over an image (or on the last one you clicked) to slide in the full image on the right. **← →** browse through the images, **Space** or **Esc** closes it.
-* **Compare (Duplicates tab):** press **C** over a card, or use the **Compare** button on a group, to open a before/after slider on the right: image A on the left, image B on the right. Pick any two files in the group with the A / B buttons.
 
 ### 0.2.6
 * Duplicates: groups are now clickable cards (Keep / Delete) in the same panel style as the storyboard, with a thumbnail size slider and a **Move N to Recycle Bin** button that is always visible at the bottom, plus **Reset marks**.
